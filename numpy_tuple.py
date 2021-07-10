@@ -1,6 +1,6 @@
 import numpy as np
 
-class array_tuple_converter:
+class ArrayTupleConverter:
     """ this class is used to convert back and forth nd arrays of specific shape to tuple
     and tuples to nd arrays of that shape"""
 
