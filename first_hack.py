@@ -1,11 +1,24 @@
 import numpy as np
+from collections import defaultdict
 import gym
 import gym_sokoban
+import pandas as pd
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from agent import Agent
 from numpy_tuple import ArrayTupleConverter
+from observation_normalizer import TransformToTiny
+
+test_name = 'move has no effect penalty'
+
+def best_known_move_vector(vector_length,bad_moves_indexes:set):
+    uniform_value = 1 / (vector_length-len(bad_moves_indexes))
+    best_known_moves = torch.tensor([0 if idx in bad_moves_indexes else uniform_value for idx in range(vector_length)])
+    return best_known_moves
+
 
 class NaiveNet(nn.Module):
 
@@ -29,6 +42,7 @@ if __name__ == '__main__':
 
     """ set-up env """
     env = gym.make("Sokoban-v1")
+    env.seed(0)
 
     """ get env data for model """
     x_dim,y_dim = env.dim_room
@@ -39,17 +53,72 @@ if __name__ == '__main__':
     """ set-up model """
     model = NaiveNet(input_size,hidden_size,out_size)
 
+    """ set up helpers """
+
+    observation = env.reset()
+
+    """ used to reduce the image to minimum """
+    observation_normalizer = TransformToTiny(observation, x_dim, y_dim)
+
+    """ function validation """
+    all_types = np.unique(observation_normalizer(observation))
+    unique_observations = set(number for number in all_types)
+
+    """ used for hashing states """
     converter = ArrayTupleConverter((x_dim,y_dim))
 
-    for attempt in range(1):
-        env.reset()
-        states = set()
-        state = env.room_state
-        ob = tuple(state.flatten())
-        states.add(ob)
-        for action in range(100):
-            state = env.room_state
+    """ training helpers """
+    loss_fn = torch.nn.MSELoss()
+    learning_rate = 1e-3
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
+
+    results_over_iterations = {column:[] for column in
+                               ['repeated_states',
+                                'sum_reward',
+                                'attempt',
+                                'victory']
+                               }
+    """ training """
+
+    for attempt in tqdm(range(100)):
+        state = env.reset()
+        victory = False
+        repeated_states = 0
+        sum_reward = 0
+        all_obs = defaultdict(set)
+        current_state = observation_normalizer(env.room_state)
+        for iteration in range(100):
+            raw_prediction = model(current_state)
+            action = int(torch.argmax(raw_prediction))
             observation, reward, done, info = env.step(action)
-            ob = tuple(state.flatten())
-            states.add(ob)
-        print(len(states))
+            sum_reward += reward
+            new_state = observation_normalizer(observation)
+
+            if np.all(current_state==new_state):
+
+                repeated_states +=1
+                ob = tuple(state.flatten())
+                all_obs[ob].add(action)
+                bad_moves = all_obs[ob]
+                if len(bad_moves) == out_size:
+                    """ the game started in an unmovable position """
+                    break
+                better_value = best_known_move_vector(out_size,bad_moves)
+                loss = loss_fn(raw_prediction,better_value)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            if done is True:
+                victory = True
+                break
+
+            current_state = new_state
+
+        results_over_iterations['repeated_states'].append(repeated_states)
+        results_over_iterations['sum_reward'].append(sum_reward)
+        results_over_iterations['attempt'].append(attempt)
+        results_over_iterations['victory'].append(victory)
+
+    results_df = pd.DataFrame(results_over_iterations)
+    results_df.to_csv(f'results/{test_name}.csv')
