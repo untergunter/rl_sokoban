@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from numpy_tuple import ArrayTupleConverter
 from observation_reshaper import TransformToTiny
 
-test_name = 'move has no effect penalty'
+test_name = 'no effect penalty, got box reward'
 
 def best_known_move_vector(vector_length,bad_moves_indexes:set):
     uniform_value = 1 / (vector_length-len(bad_moves_indexes))
@@ -104,6 +104,15 @@ if __name__ == '__main__':
                 loss.backward()
                 optimizer.step()
 
+            """ teach model to do what it did to get a better reward """
+            if reward > 0:
+                better_value = torch.zeros(size=raw_prediction.shape)
+                better_value[action] = 1
+                loss = loss_fn(raw_prediction,better_value)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
             if done is True:
                 victory = True
                 break
@@ -116,6 +125,6 @@ if __name__ == '__main__':
         results_over_iterations['victory'].append(victory)
         results_over_iterations['total steps'].append(iteration)
         results_over_iterations['actions'].append(action_list)
-        print(iteration)
+
     results_df = pd.DataFrame(results_over_iterations)
     results_df.to_csv(f'results/{test_name}.csv', index=False)
