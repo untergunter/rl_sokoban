@@ -25,3 +25,16 @@ class ArrayTupleConverter:
         as_nd_array = flat_array.reshape(self.shape)
         return as_nd_array
 
+
+if __name__ == '__main__':
+    """ semi test """
+    con = ArrayTupleConverter((2,2))
+    a = np.array([0, 0, 0, 1]).reshape((2, 2))
+    b = np.array([0, 0, 1, 0]).reshape((2, 2))
+    c = np.array([0, 1, 0, 0]).reshape((2, 2))
+    d = np.array([1, 0, 0, 0]).reshape((2, 2))
+    s = set()
+    for i in (a,b,c,d):
+        t = con.to_tuple(i)
+        s.add(t)
+    print(len(s))
