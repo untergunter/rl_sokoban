@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from agent import Agent
 from numpy_tuple import ArrayTupleConverter
-from observation_normalizer import TransformToTiny
+from observation_reshaper import TransformToTiny
 
 test_name = 'move has no effect penalty'
 
@@ -56,9 +56,9 @@ if __name__ == '__main__':
     """ set up helpers """
 
     observation = env.reset()
-
+    state = env.room_state
     """ used to reduce the image to minimum """
-    observation_normalizer = TransformToTiny(observation, x_dim, y_dim)
+    observation_normalizer = TransformToTiny(observation, state)
 
     """ function validation """
     all_types = np.unique(observation_normalizer(observation))
@@ -76,18 +76,19 @@ if __name__ == '__main__':
                                ['repeated_states',
                                 'sum_reward',
                                 'attempt',
-                                'victory']
+                                'victory',
+                                'total steps']
                                }
     """ training """
 
-    for attempt in tqdm(range(100)):
+    for attempt in tqdm(range(200)):
         state = env.reset()
         victory = False
         repeated_states = 0
         sum_reward = 0
         all_obs = defaultdict(set)
-        current_state = observation_normalizer(env.room_state)
-        for iteration in range(100):
+        current_state = observation_normalizer(state)
+        for iteration in range(200):
             raw_prediction = model(current_state)
             action = int(torch.argmax(raw_prediction))
             observation, reward, done, info = env.step(action)
@@ -119,6 +120,7 @@ if __name__ == '__main__':
         results_over_iterations['sum_reward'].append(sum_reward)
         results_over_iterations['attempt'].append(attempt)
         results_over_iterations['victory'].append(victory)
+        results_over_iterations['total steps'].append(iteration)
 
     results_df = pd.DataFrame(results_over_iterations)
-    results_df.to_csv(f'results/{test_name}.csv')
+    results_df.to_csv(f'results/{test_name}.csv', index=False)
