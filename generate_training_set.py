@@ -15,7 +15,7 @@ else:
 env = gym.make("Sokoban-v1")
 env.seed(next_number)
 result_dict = {'state':[], 'steps':[]}
-for i in range(2):
+for i in range(100):
     current_state = env.reset(render_mode='tiny_rgb_array')
     current_state = current_state.mean(axis=2)
     while current_state.shape != (10, 10):
