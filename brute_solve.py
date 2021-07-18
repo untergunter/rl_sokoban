@@ -37,7 +37,6 @@ class BruteSolve:
                     if self.game_over_victory(next_state):
                         solution = self.rewind(next_state)
                         return solution
-            print(len(self.next_states))
             self.current_states = self.next_states
 
     def add_state(self,state,state_tuple, previous_state,move):
