@@ -27,7 +27,6 @@ class BruteSolve:
     def solve(self):
         while True:
             self.next_states = list()
-            print(len(self.current_states))
             for state in self.current_states:
                 for move_number in self.move_functions:
                     next_state = self.apply_move(move_number,state)
@@ -38,6 +37,7 @@ class BruteSolve:
                     if self.game_over_victory(next_state):
                         solution = self.rewind(next_state)
                         return solution
+            print(len(self.next_states))
             self.current_states = self.next_states
 
     def add_state(self,state,state_tuple, previous_state,move):
@@ -140,5 +140,4 @@ if __name__ == '__main__':
 
     bs = BruteSolve(state)
     solution = bs.solution
-    print(solution)
 

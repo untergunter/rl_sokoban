@@ -12,6 +12,7 @@ from agent import Agent
 from numpy_tuple import ArrayTupleConverter
 from observation_reshaper import TransformToTiny
 
+
 test_name = 'long term score'
 
 class DeepNet(nn.Module):
