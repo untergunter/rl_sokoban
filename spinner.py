@@ -26,7 +26,7 @@ def turn_states_90(column_of_np_states):
     rotated = [np.rot90(i) for i in column_of_np_states]
     return rotated
 
-def prepare_for_spin(path):
+def read_and_fix_state(path):
     df = pd.read_csv(path)
     df['state'] = read_clean(df['state'])
     return df
@@ -41,7 +41,7 @@ def create_spin_offs():
     for raw_file in tqdm(all_raw_files):
         file_name = raw_file.split('/')[-1].split('.')[0]
         if file_name.count('_')==1: #do not duplicate duplications
-            file = prepare_for_spin(raw_file)
+            file = read_and_fix_state(raw_file)
             for spin in range (1,4):
                 file = spin_90(file)
                 outpath = f'training_set/{file_name}_{spin}.csv'
