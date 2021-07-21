@@ -10,6 +10,12 @@ from random import shuffle
 
 from models import DeepQNet
 
+def add_Bellman_equation(df,gamma):
+    reward = df['reward'].values
+    gamma_column = gamma**np.arange(len(reward))
+    Bellman_value = [np.sum(reward[i:]*gamma_column[:len(reward) - i]) for i in range(len(reward))]
+    df['Bellman_value'] = Bellman_value
+    return df
 
 def prep_transform_state(path):
     file = read_and_fix_state(path)
@@ -34,17 +40,20 @@ def train_step_to_max_score(model,criterion,optimizer):
     env = gym.make("Sokoban-v1")
     env.seed(1024)
     env.set_maxsteps(201)
+    gamma = 0.9
 
     for all_files_iterations in range(100):
         shuffle(training_set)
         for single_file in tqdm(training_set):
-            file = read_and_fix_state(single_file)
+            raw_file = read_and_fix_state(single_file)
+            file = add_Bellman_equation(raw_file,gamma)
             boards = [state_normalizer(state)[1:9,1:9].reshape(-1) for state in file['state']]
             actions = file['action']
+            rewards = file['Bellman_value']
 
-            for state,action in zip(boards,actions):
+            for state,action,reward in zip(boards,actions,rewards):
                 state_and_action = torch.tensor(np.concatenate([state,np.array([action])])).float().to(device)
-                reward = torch.tensor([10.9])  # end game reward
+                reward = torch.tensor([reward])  # Bellman value reward
 
                 optimizer.zero_grad()
                 predicted_q = model(state_and_action)
@@ -56,20 +65,20 @@ def train_step_to_max_score(model,criterion,optimizer):
                 loss.backward()
                 optimizer.step()
 
-                # make sure not to take the wrong step
-                for wrong_action in model.actions:
-                    bad_reward = torch.tensor([0])
-                    y = bad_reward.to(device)
-                    if wrong_action == action: continue # dont want to bring it down
-                    state_and_action = torch.tensor(np.concatenate(
-                        [state, np.array([wrong_action])])).float().to(device)
-                    predicted_q = model(state_and_action)
-                    optimizer.zero_grad()
-                    loss = criterion(predicted_q, y)
-
-                    # backwards
-                    loss.backward()
-                    optimizer.step()
+                # # make sure not to take the wrong step
+                # for wrong_action in model.actions:
+                #     bad_reward = torch.tensor([0])
+                #     y = bad_reward.to(device)
+                #     if wrong_action == action: continue # dont want to bring it down
+                #     state_and_action = torch.tensor(np.concatenate(
+                #         [state, np.array([wrong_action])])).float().to(device)
+                #     predicted_q = model(state_and_action)
+                #     optimizer.zero_grad()
+                #     loss = criterion(predicted_q, y)
+                #
+                #     # backwards
+                #     loss.backward()
+                #     optimizer.step()
 
 
         current_state = env.reset(render_mode='tiny_rgb_array')
@@ -94,5 +103,5 @@ def train_step_to_max_score(model,criterion,optimizer):
 if __name__ == '__main__':
     model = DeepQNet(8*8 + 1 , 8*8+1,(1,2,3,4))
     criterion = torch.nn.L1Loss()
-    optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     train_step_to_max_score(model,criterion,optimizer)
