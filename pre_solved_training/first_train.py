@@ -8,7 +8,7 @@ import glob
 from spinner import read_and_fix_state
 from random import shuffle
 
-from models import BasicQNet
+from models import DeepQNet
 
 
 def prep_transform_state(path):
@@ -33,7 +33,7 @@ def train_step_to_max_score(model,criterion,optimizer):
     model = model.to(device)
     env = gym.make("Sokoban-v1")
     env.seed(1024)
-    env.set_maxsteps(51)
+    env.set_maxsteps(201)
 
     for all_files_iterations in range(100):
         shuffle(training_set)
@@ -45,13 +45,11 @@ def train_step_to_max_score(model,criterion,optimizer):
             for state,action in zip(boards,actions):
                 state_and_action = torch.tensor(np.concatenate([state,np.array([action])])).float().to(device)
                 reward = torch.tensor([10.9])  # end game reward
+
+                optimizer.zero_grad()
                 predicted_q = model(state_and_action)
 
                 y = reward.to(device)
-
-                # foreword
-
-                optimizer.zero_grad()
                 loss = criterion(predicted_q, y)
 
                 # backwards
@@ -83,7 +81,7 @@ def train_step_to_max_score(model,criterion,optimizer):
         rewards = []
         done = False
         # test
-        for turn in range(50):
+        for turn in range(200):
             if done:break
             current_state = state_normalizer(current_state)[1:9, 1:9].reshape(-1)
             action = model.calculate_next_step(current_state,device=device)
@@ -94,7 +92,7 @@ def train_step_to_max_score(model,criterion,optimizer):
         print(f'epoc {all_files_iterations} mean env score = {mean_reward} {"won" if done else "lost"}')
 
 if __name__ == '__main__':
-    model = BasicQNet(8*8 + 1 , 8*8+1,(1,2,3,4))
+    model = DeepQNet(8*8 + 1 , 8*8+1,(1,2,3,4))
     criterion = torch.nn.L1Loss()
     optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     train_step_to_max_score(model,criterion,optimizer)
