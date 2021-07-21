@@ -58,6 +58,22 @@ def train_step_to_max_score(model,criterion,optimizer):
                 loss.backward()
                 optimizer.step()
 
+                # make sure not to take the wrong step
+                for wrong_action in model.actions:
+                    bad_reward = torch.tensor([0])
+                    y = bad_reward.to(device)
+                    if wrong_action == action: continue # dont want to bring it down
+                    state_and_action = torch.tensor(np.concatenate(
+                        [state, np.array([wrong_action])])).float().to(device)
+                    predicted_q = model(state_and_action)
+                    optimizer.zero_grad()
+                    loss = criterion(predicted_q, y)
+
+                    # backwards
+                    loss.backward()
+                    optimizer.step()
+
+
         current_state = env.reset(render_mode='tiny_rgb_array')
         current_state = current_state.mean(axis=2)
         while current_state.shape != (10, 10):
