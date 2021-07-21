@@ -20,7 +20,7 @@ def read_state(raw_string_array):
 
 def read_clean(raw_states_list):
     as_np = [read_state(i) for i in raw_states_list]
-    return  as_np
+    return as_np
 
 def turn_states_90(column_of_np_states):
     rotated = [np.rot90(i) for i in column_of_np_states]
