@@ -13,7 +13,7 @@ from models import BasicQNet
 
 def prep_transform_state(path):
     file = read_and_fix_state(path)
-    state = file['state'][0]
+    state = file['state'].tolist()[-2] # -2 got all types of tiles for sure
     values_in_state = np.unique(state)
     normalized = [i/len(values_in_state) for i in range(len(values_in_state))]
     mapper = {original:normal_value for original, normal_value in zip(values_in_state,normalized)}
@@ -35,7 +35,7 @@ def train_step_to_max_score(model,criterion,optimizer):
     env.seed(1024)
     env.set_maxsteps(51)
 
-    for all_files_iterations in range(10):
+    for all_files_iterations in range(100):
         shuffle(training_set)
         for single_file in tqdm(training_set):
             file = read_and_fix_state(single_file)
