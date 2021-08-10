@@ -32,7 +32,8 @@ class DeepNet(nn.Module):
 
     def forward_all_moves(self,step_less_state):
         """ create a 2d tensor each row = concat(state,step)"""
-        all_steps = torch.stack([torch.cat([step_less_state.flatten(),torch.tensor([action])])
+        all_steps = torch.stack([torch.cat([step_less_state.flatten(),
+                                            torch.tensor([action])])
                                  for action in range(self.number_of_outputs)])
 
         """ output is [q_val,q_val...]"""

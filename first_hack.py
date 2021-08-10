@@ -42,7 +42,7 @@ if __name__ == '__main__':
     """ set-up env """
     env = gym.make("Sokoban-v1")
     env.seed(0)
-
+    env.set_maxsteps(201)
     """ get env data for model """
     x_dim,y_dim = env.dim_room
     input_size = x_dim*y_dim
@@ -58,12 +58,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
 
     results_over_iterations = {column:[] for column in
-                               ['repeated_states',
-                                'sum_reward',
-                                'attempt',
-                                'victory',
-                                'total steps',
-                                'actions']
+        ['repeated_states','sum_reward','attempt',
+        'victory','total steps','actions']
                                }
     """ training """
 
@@ -73,7 +69,7 @@ if __name__ == '__main__':
         while last_observation.shape !=(10,10):
             last_observation = env.reset(render_mode='tiny_rgb_array')
             last_observation = last_observation.mean(axis=2)
-        env.set_maxsteps(201)
+
         victory = False
         repeated_states = 0
         sum_reward = 0
@@ -128,3 +124,4 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame(results_over_iterations)
     results_df.to_csv(f'results/{test_name}.csv', index=False)
+
