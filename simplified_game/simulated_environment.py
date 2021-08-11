@@ -9,6 +9,9 @@ class SimulateV1:
                                2:self.__move_down,
                                3:self.__move_left,
                                4:self.__move_right}
+
+        self.xy_dif = {(-1,0):2, (1,0):1,
+                       (0,1):4 ,(0,-1):3 }
         self.can_walk_on = {1,2} # empty,empty box destination
         self.wall=0
         self.empty=1
@@ -39,8 +42,64 @@ class SimulateV1:
         reachable_locations = self.__reachable_locations(state)
         reachable_next_to_box = self.__get_intersected_indexes(
             next_to_boxes,reachable_locations)
-        valid_actions = self.__find_all_relevant_actions(state,reachable_next_to_box)
+        valid_actions = self.__find_locations_actions_moved_box(state, reachable_next_to_box)
         return valid_actions
+
+    def __get_player_x_y(self, state):
+        player_y, player_x = np.argwhere(state == self.player)[0]
+        return player_y, player_x
+
+    def steps_to_get_to(self,state,y_destination,x_destination):
+        distance_to_destination = self.__calc_distance(state,y_destination,
+                                                       x_destination)
+        player_y, player_x = self.__get_player_x_y(state)
+        moves_to_take = self.__find_path(distance_to_destination,player_y, player_x)
+        return moves_to_take
+
+    def __calc_distance(self,state,y_destination,x_destination):
+        distances = np.full(np.inf,shape=state.shape)
+        distances[(distances==self.empty)|
+                  (self.empty_destination)|
+                  (self.player)] = -np.inf
+
+        distances[y_destination,x_destination] = 0
+        player_y, player_x = self.__get_player_x_y(state)
+        reached_player = distances[player_y, player_x] != -np.inf
+        current_distance = 0
+        can_step_on = distances != np.inf
+        while not reached_player:
+            next_got_to = self.__neighbors(distances,current_distance)
+            current_distance += 1
+            distances [next_got_to & can_step_on] = current_distance
+        return distances
+
+    def __find_next_coordinates(self,distances,y,x):
+        best_score = distances[y,x]
+        if distances[y,x-1] < best_score:
+            best_y = y
+            best_x = x-1
+        if distances[y,x+1] < best_score:
+            best_y = y
+            best_x = x+1
+        if distances[y-1,x] < best_score:
+            best_y = y-1
+            best_x = x
+        if distances[y+1,x] < best_score:
+            best_y = y+1
+            best_x = x
+        return best_y,best_x
+
+    def __find_path(self,distances,current_y,current_x):
+        steps = []
+        destination_y,destination_x = np.argwhere(distances == 0)[0]
+        got_there = (current_y==destination_y) & (current_x==destination_x)
+        while not got_there:
+            next_y,next_x = self.__find_next_coordinates(distances,current_y,current_x)
+            step = self.xy_dif((current_y-next_y,current_x-next_x))
+            steps.append(step)
+            current_y, current_x = next_y,next_x
+            got_there = (current_y == destination_y) & (current_x == destination_x)
+        return steps
 
     def __reachable_locations(self,state):
         state = np.copy(state)
@@ -49,7 +108,7 @@ class SimulateV1:
                                  (state==self.empty_destination)
                                  ).astype(int)
         connected_open_areas= label(open_floor_and_player)[0]
-        player_y,player_x = np.argwhere(self.player)[0]
+        player_y,player_x = self.__get_player_x_y(state)
         reachable = connected_open_areas==connected_open_areas[player_y,player_x]
         return reachable
 
@@ -83,7 +142,7 @@ class SimulateV1:
         indexes_set = {tuple(location_index) for location_index in indexes}
         return indexes_set
 
-    def __find_all_relevant_actions(self,state,locations):
+    def __find_locations_actions_moved_box(self, state, locations):
         relevant_locations_lists = [self.__actions_moved_a_box(state,location)
                                     for location in locations]
         relevant_locations_actions = chain(relevant_locations_lists)

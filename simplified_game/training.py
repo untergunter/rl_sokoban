@@ -13,6 +13,8 @@ def main():
         # save_game_data(single_game_df)
         # save_train_statistics(train_statistics)
         print_game_stats(single_game_df,train_statistics)
+        if time % 10== 0:
+            agent.search_rate -= 0.005
 
 if __name__ =='__main__':
     main()
