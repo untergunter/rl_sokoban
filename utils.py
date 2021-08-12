@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 import pandas as pd
 from spinner import read_and_fix_state
@@ -8,6 +9,14 @@ def add_Bellman_equation(df,gamma):
     Bellman_value = [np.sum(reward[i:]*gamma_column[:len(reward) - i]) for i in range(len(reward))]
     df['Bellman_value'] = Bellman_value
     return df
+
+def calc_bellman(rewards,gamma):
+    reward = np.array(rewards)
+    gamma_column = gamma ** np.arange(len(reward))
+    Bellman_value = [np.sum(reward[i:] * gamma_column[:len(reward) - i])
+                     for i in range(len(reward))]
+    Bellman_torch = torch.from_numpy(Bellman_value)
+    return Bellman_torch
 
 def prep_transform_state(path):
     file = read_and_fix_state(path)

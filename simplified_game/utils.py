@@ -1,7 +1,7 @@
 import gym
 import gym_sokoban
 import numpy as np
-
+import torch
 
 def get_mappings(env_name: str):
     """ from observation to state values """
@@ -15,9 +15,17 @@ def get_mappings(env_name: str):
                         env.room_state.reshape(-1))
                 }
 
-    # 0:wall, 1:empty, 2:empty destination, 3:destination with box on, 4:box, 5:player
+    # 0:wall, 1:empty, 2:empty destination
+    # 3:destination with box on, 4:box, 5:player
     return mappings
 
+def calc_bellman(rewards,gamma):
+    reward = np.array(rewards)
+    gamma_column = gamma ** np.arange(len(reward))
+    Bellman_value = [np.sum(reward[i:] * gamma_column[:len(reward) - i])
+                     for i in range(len(reward))]
+    Bellman_torch = torch.from_numpy(Bellman_value)
+    return Bellman_torch
 
 def get_env(name, max_steps: int = 1000, seed: int = None):
     env = gym.make(name)

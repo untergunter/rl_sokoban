@@ -57,7 +57,7 @@ class SimulateV1:
         return moves_to_take
 
     def __calc_distance(self,state,y_destination,x_destination):
-        distances = np.full(np.inf,shape=state.shape)
+        distances = np.full(state.shape,np.inf)
         distances[(distances==self.empty)|
                   (self.empty_destination)|
                   (self.player)] = -np.inf
@@ -132,9 +132,9 @@ class SimulateV1:
     def __moved_box(self,state,move):
         state = np.copy(state)
         new_state = self.__apply_move(move,state)
-        original_box_locations = self.__set_of_indexes_where(state,self.box)
-        moved_box_locations = self.__set_of_indexes_where(new_state,self.box)
-        box_moved = original_box_locations != moved_box_locations
+        # original_box_locations = self.__set_of_indexes_where(state,self.box)
+        # moved_box_locations = self.__set_of_indexes_where(new_state,self.box)
+        box_moved = ~np.all(np.equal(state==self.box,new_state==self.box))
         return box_moved
 
     def __set_of_indexes_where(self,array,match_value):
@@ -145,14 +145,14 @@ class SimulateV1:
     def __find_locations_actions_moved_box(self, state, locations):
         relevant_locations_lists = [self.__actions_moved_a_box(state,location)
                                     for location in locations]
-        relevant_locations_actions = chain(relevant_locations_lists)
+        relevant_locations_actions = list(chain.from_iterable(relevant_locations_lists))
         return relevant_locations_actions
 
     def __apply_move(self, move, state):
+        """ un safe - deleting destination if boxes moved from over them """
         state = state.copy()
         movement = self.move_functions[move]
         state = movement(state)
-        state = self.fix_destinations(state)
         return state
 
 

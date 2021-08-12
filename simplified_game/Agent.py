@@ -2,19 +2,52 @@ import numpy as np
 import pandas as pd
 import random
 import torch
-from utils import get_mappings,get_env
+from utils import get_mappings,get_env,calc_bellman
 from simulated_environment import SimulateV1
+from torch.utils.data import TensorDataset,DataLoader,RandomSampler
 
 class Agent():
 
-    def __init__(self,env_name,model,search_rate:int=0.5):
+    def __init__(self,env_name,model,search_rate:int=0.9):
         self.model = model
         self.mappings = get_mappings(env_name)
         self.simulated_environment = SimulateV1()
         self.search_rate = search_rate
 
-    def train_model(self,game_df,gamma:float = 0.8):
-        pass
+    def train_model(self,states_actions,rewards,
+                    gamma:float = 0.8,batch_size:int=16):
+
+        states_actions = torch.tensor([torch.from_numpy(i)
+                                      for i in states_actions])
+        Bellman_rewards = calc_bellman(rewards,gamma)
+        rewards = torch.tensor([torch.from_numpy(i) for i in rewards])
+
+        dataset = TensorDataset(states_actions,rewards,Bellman_rewards)
+
+        loader = DataLoader(
+            dataset,
+            sampler=RandomSampler(dataset),
+            batch_size=batch_size
+        )
+
+        loss_fn = torch.nn.MSELoss()
+        learning_rate = 1e-3
+        optimizer = torch.optim.RMSprop(self.model.parameters(), lr=learning_rate)
+        total_loss = 0
+        for time in range(2):
+            for batch in loader:
+                state,reward,bellman = batch
+
+                optimizer.zero_grad()
+                outputs = self.model(state)
+                loss_1 = loss_fn(outputs, reward)
+                loss_2 = loss_fn(outputs, bellman)
+                total_loss += loss_1.item()
+                total_loss += loss_2.item()
+                loss_1.backward()
+                loss_2.backward()
+                optimizer.step()
+        print(f"mean batch loss:{total_loss/len(dataset)}")
 
     def play_game(self, env):
         """ play a single game, returns the training output"""
@@ -24,12 +57,11 @@ class Agent():
         done = False
         states_actions, rewards = [], []
         while not done:
-            selected_state_action = self.__select_next_step(last_state)
-            states_actions.append(selected_state_action)
-            last_state, reward, done, env = self.__get_to_and_act(env, last_state, selected_state_action)
+            action,state_action = self.__select_next_step(last_state)
+            states_actions.append(state_action)
+            last_state, reward, done, env = self.__get_to_and_act(env, last_state, action)
             rewards.append(reward)
-        game_results = pd.DataFrame({'ipnuts': states_actions, 'reward': rewards})
-        return game_results
+        return states_actions,rewards
 
     def __normalize(self,state):
         normalized_state = np.copy(state)
@@ -52,10 +84,10 @@ class Agent():
                 action = random.choice(possible_actions)
             else:
                 action = self.__select_highest_valued_action(state,possible_actions)
-        return action
+        return action,np.concatenate([state[1:-1,1:-1].flatten(),np.array(action)])
 
     def __select_highest_valued_action(self,state,possible_actions):
-        state = torch.from_numpy(state.flatten())
+        state = torch.from_numpy(state[1:-1,1:-1].flatten())
         all_steps = torch.stack([torch.cat(
                                 [state,torch.tensor([action])])
                                 for action in possible_actions ])
