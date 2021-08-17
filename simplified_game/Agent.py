@@ -124,6 +124,6 @@ class Agent():
 
 
 if __name__ == '__main__':
-    agent = Agent("PushAndPull-Sokoban-v0",None)
-    env = get_env("PushAndPull-Sokoban-v0")
+    agent = Agent("Sokoban-v1",None)
+    env = get_env("Sokoban-v1")
     agent.play_game(env)

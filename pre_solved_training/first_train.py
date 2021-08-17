@@ -41,9 +41,10 @@ def train_step_to_max_score(model,criterion,optimizer):
     env.seed(1024)
     env.set_maxsteps(201)
     gamma = 0.9
-
-    for all_files_iterations in range(100):
+    results_dict = {i: [] for i in ('losses', 'test_game_rewards')}
+    for all_files_iterations in range(50):
         shuffle(training_set)
+        total_loss = 0
         for single_file in tqdm(training_set):
             raw_file = read_and_fix_state(single_file)
             file = add_Bellman_equation(raw_file,gamma)
@@ -79,7 +80,7 @@ def train_step_to_max_score(model,criterion,optimizer):
                     # backwards
                     loss.backward()
                     optimizer.step()
-
+                    total_loss += loss.item()
 
         current_state = env.reset(render_mode='tiny_rgb_array')
         current_state = current_state.mean(axis=2)
@@ -97,11 +98,18 @@ def train_step_to_max_score(model,criterion,optimizer):
             current_state, reward, done, info = env.step(action, observation_mode='tiny_rgb_array')
             rewards.append(reward)
 
-        mean_reward = np.mean(np.array(rewards))
-        print(f'epoc {all_files_iterations} mean env score = {mean_reward} {"won" if done else "lost"}')
+        total_reward = np.sum(np.array(rewards))
 
+
+        results_dict['losses'].append(total_loss)
+        results_dict['test_game_rewards'].append(total_reward)
+        print(f'epoc {all_files_iterations} loss={total_loss} test score = {total_reward} {"won" if done else "lost"}')
+    results = pd.DataFrame(results_dict)
+    return results
 if __name__ == '__main__':
     model = DeepQNet(8*8 + 1 , 8*8+1,(1,2,3,4))
     criterion = torch.nn.L1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    train_step_to_max_score(model,criterion,optimizer)
+    results = train_step_to_max_score(model,criterion,optimizer)
+    results.to_csv('/home/ido/data/idc/reinforcement learning/course/final_project/sokoban/results/DQN_pre_trained.csv',
+                   index = False)
