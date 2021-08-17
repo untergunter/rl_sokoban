@@ -5,6 +5,7 @@ import torch
 from utils import get_mappings,get_env,calc_bellman
 from simulated_environment import SimulateV1
 from torch.utils.data import TensorDataset,DataLoader,RandomSampler
+from datetime import datetime
 
 class Agent():
 
@@ -57,10 +58,13 @@ class Agent():
         done = False
         states_actions, rewards = [], []
         while not done:
+            print(f'finding action {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
             action,state_action = self.__select_next_step(last_state)
             states_actions.append(state_action)
+            print(f'taking actions {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
             last_state, reward, done, env = self.__get_to_and_act(env, last_state, action)
             rewards.append(reward)
+            print(f'took a step {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
         return states_actions,rewards
 
     def __normalize(self,state):
@@ -90,7 +94,7 @@ class Agent():
         state = torch.from_numpy(state[1:-1,1:-1].flatten())
         all_steps = torch.stack([torch.cat(
                                 [state,torch.tensor([action])])
-                                for action in possible_actions ])
+                                for action in possible_actions])
         expected_return = self.model(all_steps)
         selected_index = int(torch.argmax(expected_return))
         selected_action = possible_actions[selected_index]
@@ -101,11 +105,17 @@ class Agent():
         get_to_y,get_to_x,action = location_action
         steps_to_location = self.simulated_environment.\
             steps_to_get_to(state,get_to_y,get_to_x)
-
+        done = False
         for walk in steps_to_location:
-            _, _, _, env = env.step(walk)
+            _, reward, done, _ = env.step(walk)
+            print(f'walked {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+            if done:
+                last_state = self.__normalize(env.render(mode='tiny_rgb_array'))
+                break
 
-        last_state, reward, done, env = env.step(action)
+        if not done:
+            _, reward, done, _ = env.step(action)
+            last_state = self.__normalize(env.render(mode='tiny_rgb_array'))
         return last_state, reward, done, env
 
 

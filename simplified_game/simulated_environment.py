@@ -58,9 +58,9 @@ class SimulateV1:
 
     def __calc_distance(self,state,y_destination,x_destination):
         distances = np.full(state.shape,np.inf)
-        distances[(distances==self.empty)|
-                  (self.empty_destination)|
-                  (self.player)] = -np.inf
+        distances[(state==self.empty)|
+                  (state==self.empty_destination)|
+                  (state==self.player)] = -np.inf
 
         distances[y_destination,x_destination] = 0
         player_y, player_x = self.__get_player_x_y(state)
@@ -75,6 +75,7 @@ class SimulateV1:
 
     def __find_next_coordinates(self,distances,y,x):
         best_score = distances[y,x]
+        best_y, best_x = None,None
         if distances[y,x-1] < best_score:
             best_y = y
             best_x = x-1
